@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}{{ view.object|yesno:"Редактировать клиента,Новый клиент" }}{% endblock %}
+{% block content %}
+  <h1 class="mb-3">{{ view.object|yesno:"Редактировать клиента,Новый клиент" }}</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      {{ form.email }} {{ form.email.errors }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Имя</label>
+      {{ form.full_name }} {{ form.full_name.errors }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Комментарий</label>
+      {{ form.comment }} {{ form.comment.errors }}
+    </div>
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <a href="{% url 'recipients_list' %}" class="btn btn-outline-secondary">Отмена</a>
+  </form>
+{% endblock %}
+
+
+

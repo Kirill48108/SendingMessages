@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Регистрация{% endblock %}
+{% block content %}
+  <h1 class="mb-3">Регистрация</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <div class="mb-3">
+      <label class="form-label">Логин</label>
+      {{ form.username }} {{ form.username.errors }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      {{ form.email }} {{ form.email.errors }}
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Пароль</label>
+      {{ form.password }} {{ form.password.errors }}
+    </div>
+    <button type="submit" class="btn btn-primary">Зарегистрироваться</button>
+    <a href="{% url 'login' %}" class="btn btn-outline-secondary">Войти</a>
+  </form>
+{% endblock %}

@@ -1,0 +1,23 @@
+:root {
+  --sm-radius: 12px;
+}
+
+.card {
+  border-radius: var(--sm-radius);
+}
+
+.navbar, .footer, .alert, .btn, .form-control {
+  border-radius: 10px;
+}
+
+body {
+  background: #f8fafc;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: 0.2px;
+}
+
+.card .display-6 {
+  font-size: 2.25rem;
+}

@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Пользователи сервиса{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="m-0">Пользователи сервиса</h1>
+  </div>
+
+  {% if users %}
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Логин</th>
+            <th>Email</th>
+            <th>Роль</th>
+            <th>Заблокирован</th>
+            <th class="text-end">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+            <tr>
+              <td>{{ u.id }}</td>
+              <td>{{ u.username }}</td>
+              <td>{{ u.email|default:"—" }}</td>
+              <td>
+                {% if u.profile and u.profile.role == ROLE_MANAGER %}
+                  Менеджер
+                {% else %}
+                  Пользователь
+                {% endif %}
+              </td>
+              <td>
+                {% if u.profile and u.profile.is_blocked %}
+                  Да
+                {% else %}
+                  Нет
+                {% endif %}
+              </td>
+              <td class="text-end">
+                <!-- Смена роли -->
+                <form action="{% url 'user_set_role' pk=u.pk %}" method="post" class="d-inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="role"
+                         value="{% if u.profile and u.profile.role == ROLE_MANAGER %}user{% else %}manager{% endif %}">
+                  <button type="submit" class="btn btn-outline-primary btn-sm">
+                    {% if u.profile and u.profile.role == ROLE_MANAGER %}
+                      Сделать пользователем
+                    {% else %}
+                      Сделать менеджером
+                    {% endif %}
+                  </button>
+                </form>
+
+                <!-- Блокировка/разблокировка -->
+                <form action="{% url 'user_block_toggle' pk=u.pk %}" method="post" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm">
+                    {% if u.profile and u.profile.is_blocked %}
+                      Разблокировать
+                    {% else %}
+                      Заблокировать
+                    {% endif %}
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p>Пользователей нет.</p>
+  {% endif %}
+{% endblock %}
