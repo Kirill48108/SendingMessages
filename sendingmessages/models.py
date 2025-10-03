@@ -1,56 +1,29 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-import uuid
-
-class UserProfile(models.Model):
-    ROLE_USER = "user"
-    ROLE_MANAGER = "manager"
-    ROLE_CHOICES = [
-        (ROLE_USER, "Пользователь"),
-        (ROLE_MANAGER, "Менеджер"),
-    ]
-
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
-    role = models.CharField(max_length=16, choices=ROLE_CHOICES, default=ROLE_USER, verbose_name="Роль")
-    is_blocked = models.BooleanField(default=False, verbose_name="Заблокирован")
-
-    class Meta:
-        verbose_name = "Профиль пользователя"
-        verbose_name_plural = "Профили пользователей"
-
-    def __str__(self):
-        return f"{self.user.username} ({self.get_role_display()})"
-
-#
-class EmailConfirmation(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="email_confirmations")
-    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    is_used = models.BooleanField(default=False)
-
-    class Meta:
-        verbose_name = "Подтверждение email"
-        verbose_name_plural = "Подтверждения email"
-
-    def __str__(self):
-        return f"{self.user.username} / {self.token} / used={self.is_used}"
 
 
+from django.conf import settings
+from django.db import models
 
 class Recipient(models.Model):
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="recipients", verbose_name="Владелец")
-    email = models.EmailField(unique=True, verbose_name="Email")
-    full_name = models.CharField(max_length=255, verbose_name="Ф. И. О.")
-    comment = models.TextField(blank=True, verbose_name="Комментарий")
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="recipients",
+        verbose_name="Владелец",
+    )
+    email = models.EmailField("Email")  # убрано unique=True
+    full_name = models.CharField("Имя", max_length=255, blank=True)
+    comment = models.TextField("Комментарий", blank=True)
 
     class Meta:
-        verbose_name = "Получатель рассылки"
-        verbose_name_plural = "Получатели рассылки"
-        ordering = ["full_name", "email"]
+        verbose_name = "Получатель"
+        verbose_name_plural = "Получатели"
+        unique_together = (("owner", "email"),)
+        indexes = [models.Index(fields=["owner", "email"])]
 
-    def __str__(self) -> str:
-        return f"{self.full_name} <{self.email}>"
+
 
 
 

@@ -1,11 +1,8 @@
-
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-
-
 
 # Аутентификация и редиректы
 LOGIN_URL = "login"
@@ -51,27 +48,17 @@ else:
         }
     }
 
-
 # Настройки django-apscheduler (необязательные, но полезные)
 APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"
 APSCHEDULER_RUN_NOW_TIMEOUT = 25  # сек
 
-
-
-
-
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 DEBUG = True if os.getenv('DEBUG') == 'True' else False
 
 ALLOWED_HOSTS = []
-
-
-
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -80,6 +67,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'users',
     'sendingmessages',
     'django_apscheduler',
 ]
@@ -114,9 +102,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-
-
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
@@ -127,9 +112,6 @@ DATABASES = {
         'PORT': os.getenv('PORT'),
     }
 }
-
-
-
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -146,19 +128,13 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
-
 LANGUAGE_CODE = 'ru-ru'
 
 TIME_ZONE = 'Europe/Moscow'
 
-
 USE_I18N = True
 
 USE_TZ = True
-
-
-
 
 STATIC_URL = 'static/'
 _static_dir = BASE_DIR / 'static'
@@ -169,7 +145,6 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
 
 EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")

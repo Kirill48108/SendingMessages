@@ -1,21 +1,7 @@
 from django.contrib import admin
 
-from .models import UserProfile, Recipient, Message, Mailing, MailingAttempt
+from .models import  Recipient, Message, Mailing, MailingAttempt
 
-@admin.register(UserProfile)
-class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "role", "is_blocked")
-    list_filter = ("role", "is_blocked")
-    search_fields = ("user__username", "user__email")
-    actions = ["block_users", "unblock_users"]
-
-    def block_users(self, request, queryset):
-        queryset.update(is_blocked=True)
-    block_users.short_description = "Заблокировать выбранных пользователей"
-
-    def unblock_users(self, request, queryset):
-        queryset.update(is_blocked=False)
-    unblock_users.short_description = "Разблокировать выбранных пользователей"
 
 
 @admin.register(Recipient)

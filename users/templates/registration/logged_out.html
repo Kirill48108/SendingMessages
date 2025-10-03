@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Вы вышли{% endblock %}
+{% block content %}
+<div class="container py-4" style="max-width: 560px;">
+  <div class="alert alert-info shadow-sm">
+    <h1 class="h4">Вы вышли из аккаунта</h1>
+    <p class="mb-3">Сеанс завершён.</p>
+    <div class="d-flex gap-2">
+      <a href="{% url 'login' %}" class="btn btn-primary">Войти снова</a>
+      <a href="{% url 'home' %}" class="btn btn-outline-secondary">На главную</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

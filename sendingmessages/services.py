@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 import logging
 
-from .models import Mailing, MailingAttempt, EmailConfirmation
+from .models import Mailing, MailingAttempt
 
 logger = logging.getLogger(__name__)
 

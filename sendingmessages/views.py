@@ -1,6 +1,5 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.contrib.auth.models import User
 from django.db.models import Count, Q
 from django.http import HttpResponseRedirect, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404
@@ -14,8 +13,9 @@ from django.views.generic import (
 
 import logging
 
-from .models import Recipient, Message, Mailing, MailingAttempt, UserProfile, EmailConfirmation
-from .services import send_mailing as send_mailing_service, send_activation_email
+from .models import Recipient, Message, Mailing, MailingAttempt
+from users.models import UserProfile
+from .services import send_mailing as send_mailing_service
 
 logger = logging.getLogger(__name__)
 
@@ -37,16 +37,25 @@ class BlockedCheckMixin(UserPassesTestMixin):
         messages.error(self.request, "Ваш аккаунт заблокирован. Обратитесь к менеджеру.")
         return HttpResponseRedirect(reverse("home"))
 
+class OwnerCreateMixin:
+    """
+    Автопривязка request.user в поле owner для создаваемых объектов.
+    Не наследуется от LoginRequiredMixin, чтобы избежать конфликтов MRO.
+    """
+    owner_field_name = "owner"
+
+    def form_valid(self, form):
+        model_fields = {f.name for f in form._meta.model._meta.get_fields()}
+        if self.owner_field_name in model_fields and not form.instance.pk:
+            setattr(form.instance, self.owner_field_name, self.request.user)
+        return super().form_valid(form)
+
 
 class OwnerAssignMixin:
     """
     Автоматически проставляет owner текущего пользователя при создании объекта.
     """
-    def form_valid(self, form):
-        if hasattr(form.instance, "owner") and not form.instance.pk:
-            form.instance.owner = self.request.user
-        return super().form_valid(form)
-
+    pass
 
 class OwnerOrManagerQuerysetMixin:
     """
@@ -61,7 +70,6 @@ class OwnerOrManagerQuerysetMixin:
         if role == UserProfile.ROLE_MANAGER:
             return qs
         return qs.filter(owner=user)
-
 
 class OwnerOnlyQuerysetMixin:
     """
@@ -88,65 +96,6 @@ class ManagerRequiredMixin(UserPassesTestMixin):
         return HttpResponseRedirect(reverse("home"))
 
 
-# =========================
-# Менеджер: управление пользователями
-# =========================
-
-class UsersListView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixin, TemplateView):
-    template_name = "users/list.html"
-
-    def get_context_data(self, **kwargs):
-        ctx = super().get_context_data(**kwargs)
-        # Загружаем пользователей вместе с профилями
-        users = User.objects.select_related("profile").order_by("username")
-        ctx["users"] = users
-        ctx["ROLE_USER"] = UserProfile.ROLE_USER
-        ctx["ROLE_MANAGER"] = UserProfile.ROLE_MANAGER
-        return ctx
-
-class UserBlockToggleView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixin, View):
-    """
-    Переключение блокировки пользователя (POST).
-    """
-    def post(self, request, pk: int):
-        target = get_object_or_404(User, pk=pk)
-        profile = getattr(target, "profile", None)
-        if not profile:
-            profile = UserProfile.objects.create(user=target, role=UserProfile.ROLE_USER, is_blocked=False)
-
-        profile.is_blocked = not profile.is_blocked
-        profile.save(update_fields=["is_blocked"])
-        state = "заблокирован" if profile.is_blocked else "разблокирован"
-        messages.success(request, f"Пользователь {target.username} {state}.")
-        return HttpResponseRedirect(reverse("users_list"))
-
-    def get(self, request, pk: int):
-        return HttpResponseNotAllowed(permitted_methods=["POST"])
-
-class UserSetRoleView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixin, View):
-    """
-    Установка роли пользователю (POST, поле role в форме).
-    """
-    def post(self, request, pk: int):
-        target = get_object_or_404(User, pk=pk)
-        new_role = request.POST.get("role")
-        if new_role not in (UserProfile.ROLE_USER, UserProfile.ROLE_MANAGER):
-            messages.error(request, "Некорректная роль.")
-            return HttpResponseRedirect(reverse("users_list"))
-
-        profile = getattr(target, "profile", None)
-        if not profile:
-            profile = UserProfile.objects.create(user=target, role=UserProfile.ROLE_USER, is_blocked=False)
-
-        profile.role = new_role
-        profile.save(update_fields=["role"])
-        role_human = "Менеджер" if new_role == UserProfile.ROLE_MANAGER else "Пользователь"
-        messages.success(request, f"Роль пользователя {target.username} изменена на «{role_human}».")
-        return HttpResponseRedirect(reverse("users_list"))
-
-    def get(self, request, pk: int):
-        return HttpResponseNotAllowed(permitted_methods=["POST"])
-
 
 
 # =========================
@@ -164,69 +113,6 @@ class HomeView(TemplateView):
         ctx["unique_recipients"] = Recipient.objects.values("email").distinct().count()
         return ctx
 
-
-# =========================
-# Регистрация / активация
-# =========================
-
-class SignUpView(FormView):
-    template_name = "auth/signup.html"
-    success_url = reverse_lazy("activation_sent")
-
-    def get_form(self, form_class=None):
-        from django import forms
-
-        class _Form(forms.Form):
-            username = forms.CharField(max_length=150, label="Логин")
-            email = forms.EmailField(label="Email")
-            password = forms.CharField(widget=forms.PasswordInput, label="Пароль")
-        return _Form(self.request.POST or None)
-
-    def form_valid(self, form):
-        from django.db import IntegrityError, transaction
-
-        username = form.cleaned_data["username"].strip()
-        email = form.cleaned_data["email"].strip()
-        password = form.cleaned_data["password"]
-
-        # Проверка занятости с учётом регистра
-        if User.objects.filter(Q(username__iexact=username) | Q(email__iexact=email)).exists():
-            form.add_error(None, "Пользователь с таким логином или email уже существует")
-            return self.form_invalid(form)
-
-        try:
-            with transaction.atomic():
-                user = User.objects.create_user(
-                    username=username,
-                    email=email,
-                    password=password,
-                    is_active=False,  # активируем через письмо
-                )
-        except IntegrityError:
-            form.add_error(None, "Пользователь с таким логином или email уже существует")
-            return self.form_invalid(form)
-
-        UserProfile.objects.get_or_create(user=user, defaults={"role": UserProfile.ROLE_USER})
-        send_activation_email(self.request, user)
-        return super().form_valid(form)
-
-
-class ActivationSentView(TemplateView):
-    template_name = "auth/activation_sent.html"
-
-
-class ActivateAccountView(View):
-    def get(self, request, token):
-        confirm = get_object_or_404(EmailConfirmation, token=token, is_used=False)
-        user = confirm.user
-        user.is_active = True
-        user.save(update_fields=["is_active"])
-        confirm.is_used = True
-        confirm.save(update_fields=["is_used"])
-        messages.success(request, "Аккаунт активирован. Выполните вход.")
-        return HttpResponseRedirect(reverse("login"))
-
-
 # =========================
 # Клиенты
 # =========================
@@ -242,11 +128,12 @@ class RecipientDetailView(LoginRequiredMixin, BlockedCheckMixin, OwnerOrManagerQ
     template_name = "recipients/detail.html"
     context_object_name = "recipient"
 
-class RecipientCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerAssignMixin, CreateView):
+class RecipientCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerCreateMixin, CreateView):
     model = Recipient
     fields = ["email", "full_name", "comment"]
     template_name = "recipients/form.html"
     success_url = reverse_lazy("recipients_list")
+
 
 class RecipientUpdateView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQuerysetMixin, UpdateView):
     model = Recipient
@@ -258,7 +145,6 @@ class RecipientDeleteView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQuerys
     model = Recipient
     template_name = "recipients/confirm_delete.html"
     success_url = reverse_lazy("recipients_list")
-
 
 # =========================
 # Сообщения
@@ -275,11 +161,12 @@ class MessageDetailView(LoginRequiredMixin, BlockedCheckMixin, OwnerOrManagerQue
     template_name = "messages/detail.html"
     context_object_name = "message"
 
-class MessageCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerAssignMixin, CreateView):
+class MessageCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerCreateMixin, CreateView):
     model = Message
     fields = ["subject", "body"]
     template_name = "messages/form.html"
     success_url = reverse_lazy("messages_list")
+
 
 class MessageUpdateView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQuerysetMixin, UpdateView):
     model = Message
@@ -291,7 +178,6 @@ class MessageDeleteView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQueryset
     model = Message
     template_name = "messages/confirm_delete.html"
     success_url = reverse_lazy("messages_list")
-
 
 # =========================
 # Рассылки
@@ -308,11 +194,12 @@ class MailingDetailView(LoginRequiredMixin, BlockedCheckMixin, OwnerOrManagerQue
     template_name = "mailings/detail.html"
     context_object_name = "mailing"
 
-class MailingCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerAssignMixin, CreateView):
+class MailingCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerCreateMixin, CreateView):
     model = Mailing
     fields = ["start_at", "end_at", "status", "message", "recipients", "is_disabled"]
     template_name = "mailings/form.html"
     success_url = reverse_lazy("mailings_list")
+
 
 class MailingUpdateView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQuerysetMixin, UpdateView):
     model = Mailing
@@ -357,7 +244,6 @@ class MailingSendView(LoginRequiredMixin, BlockedCheckMixin, OwnerOrManagerQuery
         logger.info("User %s triggered manual send for mailing %s", request.user.id, mailing.id)
         result = send_mailing_service(mailing)
 
-        # Обновление статуса после отправки
         new_status = Mailing.STATUS_RUNNING
         if mailing.end_at and timezone.now() > mailing.end_at:
             new_status = Mailing.STATUS_FINISHED
