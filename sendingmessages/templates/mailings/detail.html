@@ -1,37 +1,76 @@
 {% extends "base.html" %}
-{% block title %}Рассылка #{{ mailing.id }}{% endblock %}
+
 {% block content %}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h1 class="m-0">Рассылка #{{ mailing.id }}</h1>
-    <div>
-      <a href="{% url 'mailings_edit' pk=mailing.pk %}" class="btn btn-warning">Редактировать</a>
-      <form action="{% url 'mailings_delete' pk=mailing.pk %}" method="post" class="d-inline">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-danger" onclick="return confirm('Удалить рассылку?')">Удалить</button>
-      </form>
-      <form action="{% url 'mailings_send' pk=mailing.pk %}" method="post" class="d-inline">
-        {% csrf_token %}
-        <button type="submit" class="btn btn-primary" {% if mailing.is_disabled %}disabled{% endif %}>
-          Отправить сейчас
-        </button>
-      </form>
+<div class="container mt-4">
+  <h1>Рассылка: {{ mailing.message.subject }}</h1>
+
+  <div class="mb-3">
+    <a class="btn btn-secondary btn-sm" href="{% url 'mailings_list' %}">← К списку рассылок</a>
+  </div>
+
+  <div class="card mb-3">
+    <div class="card-header">
+      Детали рассылки
+    </div>
+    <div class="card-body">
+      <dl class="row">
+        <dt class="col-sm-3">Статус</dt>
+        <dd class="col-sm-9">
+          {{ mailing.status }}
+          {% if mailing.is_disabled %}
+            <span class="badge bg-warning text-dark ms-2">Отключена</span>
+          {% endif %}
+        </dd>
+
+        <dt class="col-sm-3">Период</dt>
+        <dd class="col-sm-9">
+          {{ mailing.start_at }} — {{ mailing.end_at }}
+          {% if mailing.is_time_window_active %}
+            <span class="badge bg-success ms-2">Активно</span>
+          {% else %}
+            <span class="badge bg-secondary ms-2">Не активно</span>
+          {% endif %}
+        </dd>
+
+        <dt class="col-sm-3">Сообщение</dt>
+        <dd class="col-sm-9">
+          <strong>{{ mailing.message.subject }}</strong><br>
+          <pre class="mb-0" style="white-space: pre-wrap;">{{ mailing.message.body }}</pre>
+        </dd>
+
+        <dt class="col-sm-3">Получатели</dt>
+        <dd class="col-sm-9">
+          {% if mailing.recipients.all %}
+            <ul class="mb-0">
+              {% for r in mailing.recipients.all %}
+                <li>{{ r.email }}</li>
+              {% empty %}
+                <li>Получателей нет</li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <em>Получателей нет</em>
+          {% endif %}
+        </dd>
+      </dl>
     </div>
   </div>
-  <dl class="row">
-    <dt class="col-sm-3">Старт</dt><dd class="col-sm-9">{{ mailing.start_at }}</dd>
-    <dt class="col-sm-3">Финиш</dt><dd class="col-sm-9">{{ mailing.end_at|default:"—" }}</dd>
-    <dt class="col-sm-3">Статус</dt><dd class="col-sm-9">{{ mailing.status }}</dd>
-    <dt class="col-sm-3">Отключена</dt><dd class="col-sm-9">{{ mailing.is_disabled|yesno:"Да,Нет" }}</dd>
-    <dt class="col-sm-3">Сообщение</dt><dd class="col-sm-9">{{ mailing.message }}</dd>
-    <dt class="col-sm-3">Получатели</dt>
-    <dd class="col-sm-9">
-      {% for r in mailing.recipients.all %}
-        <div>{{ r.email }}{% if r.full_name %} — {{ r.full_name }}{% endif %}</div>
-      {% empty %}
-        <div>—</div>
-      {% endfor %}
-    </dd>
-  </dl>
-  <a href="{% url 'mailings_list' %}" class="btn btn-outline-secondary">Назад</a>
-{% endblock %}
 
+  <div class="d-flex gap-2">
+    {% if user.is_authenticated and user.profile and user.profile.role == 'manager' %}
+      <form method="post" action="{% url 'mailing_disable_toggle' mailing.pk %}">
+        {% csrf_token %}
+        <button class="btn {% if mailing.is_disabled %}btn-success{% else %}btn-warning{% endif %}">
+          {% if mailing.is_disabled %}Включить{% else %}Отключить{% endif %}
+        </button>
+      </form>
+    {% endif %}
+
+    {# Если у вас есть ручной запуск рассылки через POST вьюху, раскомментируйте и подставьте правильный URL name #}
+    {# <form method="post" action="{% url 'mailings_send' mailing.pk %}">
+      {% csrf_token %}
+      <button class="btn btn-primary">Отправить сейчас</button>
+    </form> #}
+  </div>
+</div>
+{% endblock %}

@@ -3,7 +3,7 @@ from .views import (
     HomeView, StatsView,
     RecipientListView, RecipientDetailView, RecipientCreateView, RecipientUpdateView, RecipientDeleteView,
     MessageListView, MessageDetailView, MessageCreateView, MessageUpdateView, MessageDeleteView,
-    MailingListView, MailingDetailView, MailingCreateView, MailingUpdateView, MailingDeleteView, MailingSendView,
+    MailingListView, MailingDetailView, MailingCreateView, MailingUpdateView, MailingDeleteView, MailingSendView,MailingDisableToggleView
 )
 
 urlpatterns = [
@@ -36,5 +36,7 @@ urlpatterns = [
     path("mailings/<int:pk>/edit/", MailingUpdateView.as_view(), name="mailings_edit"),
     path("mailings/<int:pk>/delete/", MailingDeleteView.as_view(), name="mailings_delete"),
     path("mailings/<int:pk>/send/", MailingSendView.as_view(), name="mailings_send"),
+    path("mailings/<int:pk>/disable-toggle/", MailingDisableToggleView.as_view(), name="mailing_disable_toggle"),
+
 ]
 

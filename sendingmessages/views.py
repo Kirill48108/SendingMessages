@@ -20,6 +20,7 @@ from .services import send_mailing as send_mailing_service
 logger = logging.getLogger(__name__)
 
 
+
 # =========================
 # МИКСИНЫ доступа / служебные
 # =========================
@@ -94,6 +95,20 @@ class ManagerRequiredMixin(UserPassesTestMixin):
     def handle_no_permission(self):
         messages.error(self.request, "Доступ разрешён только менеджерам.")
         return HttpResponseRedirect(reverse("home"))
+
+
+class MailingDisableToggleView(LoginRequiredMixin, ManagerRequiredMixin, View):
+    """
+    Переключение статуса 'Отключена' для рассылки. Доступно только менеджеру.
+    """
+    def post(self, request, pk: int):
+        mailing = get_object_or_404(Mailing, pk=pk)
+        mailing.is_disabled = not mailing.is_disabled
+        mailing.save(update_fields=["is_disabled"])
+        state = "отключена" if mailing.is_disabled else "включена"
+        messages.success(request, f"Рассылка '{mailing}' {state}.")
+        return HttpResponseRedirect(reverse("mailings_detail", args=[pk]))
+
 
 
 
@@ -196,16 +211,32 @@ class MailingDetailView(LoginRequiredMixin, BlockedCheckMixin, OwnerOrManagerQue
 
 class MailingCreateView(LoginRequiredMixin, BlockedCheckMixin, OwnerCreateMixin, CreateView):
     model = Mailing
-    fields = ["start_at", "end_at", "status", "message", "recipients", "is_disabled"]
+    fields = ["start_at", "end_at", "message", "recipients"]
     template_name = "mailings/form.html"
     success_url = reverse_lazy("mailings_list")
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        for field_name in ["recipients", "message"]:
+            init_qs = form.fields[field_name].queryset
+            form.fields[field_name].queryset = init_qs.filter(owner=self.request.user)
+        return form
+
 
 
 class MailingUpdateView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQuerysetMixin, UpdateView):
     model = Mailing
-    fields = ["start_at", "end_at", "status", "message", "recipients", "is_disabled"]
+    fields = ["start_at", "end_at", "message", "recipients"]
     template_name = "mailings/form.html"
     success_url = reverse_lazy("mailings_list")
+
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        for field_name in ["recipients", "message"]:
+            init_qs = form.fields[field_name].queryset
+            form.fields[field_name].queryset = init_qs.filter(owner=self.request.user)
+        return form
+
 
 class MailingDeleteView(LoginRequiredMixin, BlockedCheckMixin, OwnerOnlyQuerysetMixin, DeleteView):
     model = Mailing

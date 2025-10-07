@@ -12,7 +12,8 @@
         <li class="nav-item"><a class="nav-link" href="{% url 'mailings_list' %}">Рассылки</a></li>
         <li class="nav-item"><a class="nav-link" href="{% url 'stats' %}">Статистика</a></li>
         {% if user.is_authenticated and user.profile and user.profile.role == 'manager' %}
-          <li class="nav-item"><a class="nav-link" href="{% url 'users_list' %}">Пользователи</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:users_list' %}">Пользователи</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:manager_dashboard' %}">Дашборд</a></li>
         {% endif %}
       </ul>
 
@@ -22,14 +23,14 @@
             <span class="navbar-text me-2">Привет, {{ user.username }}!</span>
           </li>
           <li class="nav-item">
-            <a class="btn btn-outline-light btn-sm" href="{% url 'logout' %}">Выйти</a>
+            <a class="btn btn-outline-light btn-sm" href="{% url 'users:logout' %}">Выйти</a>
           </li>
         {% else %}
           <li class="nav-item">
-            <a class="btn btn-outline-light btn-sm" href="{% url 'login' %}">Войти</a>
+            <a class="btn btn-outline-light btn-sm" href="{% url 'users:login' %}">Войти</a>
           </li>
           <li class="nav-item ms-2">
-            <a class="btn btn-warning btn-sm" href="{% url 'signup' %}">Регистрация</a>
+            <a class="btn btn-warning btn-sm" href="{% url 'users:signup' %}">Регистрация</a>
           </li>
         {% endif %}
       </ul>

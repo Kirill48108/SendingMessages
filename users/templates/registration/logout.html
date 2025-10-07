@@ -1,19 +1,14 @@
 {% extends "base.html" %}
-{% block title %}Выход{% endblock %}
+
 {% block content %}
-<div class="container py-4" style="max-width: 560px;">
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h1 class="h4 mb-3">Выйти из аккаунта</h1>
-      <p class="mb-4">Вы действительно хотите выйти?</p>
-      <form method="post" action="{% url 'logout' %}">
-        {% csrf_token %}
-        <div class="d-flex gap-2">
-          <button type="submit" class="btn btn-danger">Выйти</button>
-          <a href="{% url 'home' %}" class="btn btn-outline-secondary">Отмена</a>
-        </div>
-      </form>
-    </div>
-  </div>
+<div class="container mt-4" style="max-width:480px;">
+  <h1 class="mb-3">Выход из аккаунта</h1>
+  <p>Вы уверены, что хотите выйти?</p>
+
+  <form method="post" action="{% url 'users:logout' %}">
+    {% csrf_token %}
+    <button class="btn btn-danger" type="submit">Выйти</button>
+    <a class="btn btn-secondary ms-2" href="{% url 'home' %}">Отмена</a>
+  </form>
 </div>
 {% endblock %}

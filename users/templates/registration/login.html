@@ -1,36 +1,37 @@
 {% extends "base.html" %}
-{% block title %}Вход{% endblock %}
+{% load static %}
+
 {% block content %}
-<div class="container py-4" style="max-width: 480px;">
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h1 class="h4 mb-3 text-center">Вход в аккаунт</h1>
+<div class="container mt-4" style="max-width:480px;">
+  <h1 class="mb-3">Вход</h1>
 
-      {% if form.non_field_errors %}
-        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-      {% endif %}
-
-      <form method="post" novalidate>
-        {% csrf_token %}
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.username.id_for_label }}">Логин или e‑mail</label>
-          {{ form.username }}
-          <div class="text-danger small">{{ form.username.errors }}</div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label" for="{{ form.password.id_for_label }}">Пароль</label>
-          {{ form.password }}
-          <div class="text-danger small">{{ form.password.errors }}</div>
-        </div>
-
-        <button class="btn btn-primary w-100" type="submit">Войти</button>
-      </form>
-
-      <div class="mt-3 d-flex justify-content-between">
-        <a href="{% url 'password_reset' %}">Забыли пароль?</a>
-        <a href="{% url 'login' %}">Обновить</a>
-      </div>
+  {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+      {{ form.non_field_errors }}
     </div>
-  </div>
+  {% endif %}
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+      {{ form.username }}
+      {% if form.username.errors %}
+        <div class="text-danger small">{{ form.username.errors|striptags }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+      {{ form.password }}
+      {% if form.password.errors %}
+        <div class="text-danger small">{{ form.password.errors|striptags }}</div>
+      {% endif %}
+    </div>
+
+    <button class="btn btn-primary" type="submit">Войти</button>
+    <a class="btn btn-link" href="{% url 'users:password_reset' %}">Забыли пароль?</a>
+  </form>
 </div>
 {% endblock %}
+

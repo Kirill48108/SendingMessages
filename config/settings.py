@@ -146,16 +146,56 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.smtp.EmailBackend")
-EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
-# Альтернатива: порт 465 + EMAIL_USE_SSL=True (не смешивайте TLS и SSL)
-EMAIL_USE_SSL = False
+DEBUG = os.getenv("DEBUG", "false").strip().lower() in ("1", "true", "yes", "on")
 
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+def env_bool(name: str, default: bool = False) -> bool:
+    v = os.getenv(name)
+    if v is None:
+        return default
+    return v.strip().lower() in ("1", "true", "yes", "on")
 
-DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
-SERVER_EMAIL = os.getenv("SERVER_EMAIL", DEFAULT_FROM_EMAIL)
+def env_int(name: str, default: int | None = None) -> int | None:
+    v = os.getenv(name)
+    if v is None or v.strip() == "":
+        return default
+    try:
+        return int(v)
+    except ValueError:
+        # Фоллбек вместо падения настройки
+        return default
+
+# Email
+EMAIL_BACKEND = os.getenv(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+_IS_SMTP_BACKEND = EMAIL_BACKEND.endswith("smtp.EmailBackend")
+
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = env_int("EMAIL_PORT", 587 if _IS_SMTP_BACKEND else 0)
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+
+EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True) if _IS_SMTP_BACKEND else False
+EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False) if _IS_SMTP_BACKEND else False
+# Исключаем одновременное True: при SSL отключаем TLS
+if EMAIL_USE_SSL:
+    EMAIL_USE_TLS = False
+
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "webmaster@localhost")
+EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 20)
+
+
+AUTH_PASSWORD_VALIDATORS = [
+   ]
+
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",
+]
+
+LOGIN_URL = "users:login"
+LOGIN_REDIRECT_URL = "home"
+LOGOUT_REDIRECT_URL = "home"
+
+
 

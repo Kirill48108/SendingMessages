@@ -1,4 +1,3 @@
-from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
@@ -21,10 +20,11 @@ class Recipient(models.Model):
         verbose_name = "Получатель"
         verbose_name_plural = "Получатели"
         unique_together = (("owner", "email"),)
-        indexes = [models.Index(fields=["owner", "email"])]
 
 
-
+    def __str__(self) -> str:
+        # В формах и списках будет отображаться email
+        return self.email
 
 
 class Message(models.Model):
@@ -45,8 +45,6 @@ class Message(models.Model):
 
     def __str__(self) -> str:
         return self.subject
-
-
 
 
 class Mailing(models.Model):
@@ -96,7 +94,6 @@ class Mailing(models.Model):
     def is_time_window_active(self) -> bool:
         now = timezone.now()
         return self.start_at <= now <= self.end_at
-
 
 
 

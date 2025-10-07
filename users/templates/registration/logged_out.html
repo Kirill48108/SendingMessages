@@ -1,14 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Вы вышли{% endblock %}
+
 {% block content %}
-<div class="container py-4" style="max-width: 560px;">
-  <div class="alert alert-info shadow-sm">
-    <h1 class="h4">Вы вышли из аккаунта</h1>
-    <p class="mb-3">Сеанс завершён.</p>
-    <div class="d-flex gap-2">
-      <a href="{% url 'login' %}" class="btn btn-primary">Войти снова</a>
-      <a href="{% url 'home' %}" class="btn btn-outline-secondary">На главную</a>
-    </div>
-  </div>
+<div class="container mt-4" style="max-width:540px;">
+  <h1 class="mb-3">Вы вышли из аккаунта</h1>
+  <a class="btn btn-primary" href="{% url 'users:login' %}">Войти снова</a>
+  <a class="btn btn-secondary ms-2" href="{% url 'home' %}">На главную</a>
 </div>
 {% endblock %}

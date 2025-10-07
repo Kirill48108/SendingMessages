@@ -7,19 +7,29 @@ from django.contrib.auth.models import User
 import logging
 
 from .models import Mailing, MailingAttempt
+from users.models import EmailConfirmation
 
 logger = logging.getLogger(__name__)
 
 def _get_from_email() -> str:
     return getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@example.com")
 
-def send_activation_email(request, user: User) -> None:
-    confirm = EmailConfirmation.objects.create(user=user)
-    activate_url = request.build_absolute_uri(reverse("activate", args=[str(confirm.token)]))
-    subject = "Подтверждение регистрации"
-    body = f"Здравствуйте, {user.username}!\nЧтобы активировать аккаунт, перейдите по ссылке: {activate_url}"
-    send_mail(subject=subject, message=body, from_email=_get_from_email(), recipient_list=[user.email])
-    logger.info("Activation email queued to %s (user_id=%s, token=%s)", user.email, user.id, confirm.token)
+def send_activation_email(request, user: User) -> bool:
+    """
+    Отправляет письмо с подтверждением email.
+    Возвращает True/False, чтобы контроллер смог корректно обработать ошибку и не показывать 500.
+    """
+    try:
+        confirm = EmailConfirmation.objects.create(user=user)
+        activate_url = request.build_absolute_uri(reverse("activate", args=[str(confirm.token)]))
+        subject = "Подтверждение регистрации"
+        body = f"Здравствуйте, {user.username}!\nЧтобы активировать аккаунт, перейдите по ссылке: {activate_url}"
+        send_mail(subject=subject, message=body, from_email=_get_from_email(), recipient_list=[user.email])
+        logger.info("Activation email queued to %s (user_id=%s, token=%s)", user.email, user.id, confirm.token)
+        return True
+    except Exception as exc:
+        logger.exception("Activation email send error for user_id=%s: %s", user.id, exc)
+        return False
 
 def send_mailing(mailing: Mailing) -> Dict[str, int]:
     """
@@ -110,3 +120,4 @@ def process_due_mailings() -> int:
         processed += 1
     logger.info("Scheduled job finished. Processed messages: %s", processed)
     return processed
+

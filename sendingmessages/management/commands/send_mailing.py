@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from sendingmessages.models import Mailing, UserProfile
+from sendingmessages.models import Mailing
 from sendingmessages.services import send_mailing as send_mailing_service
 
 class Command(BaseCommand):
