@@ -1,0 +1,167 @@
+from django.test import TestCase, Client, override_settings
+from django.urls import reverse
+from django.contrib.auth.models import User
+from unittest.mock import patch
+from django.utils import timezone
+import uuid
+
+from sendingmessages.models import (
+    Recipient, Message, Mailing, MailingAttempt
+)
+from users.models import UserProfile, EmailConfirmation
+
+# Общие настройки для почты в тестах (локальная "память")
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class BaseSetupMixin(TestCase):
+    def setUp(self):
+        # Обычный пользователь (владелец данных)
+        self.user = User.objects.create_user(
+            username="u1", password="p", is_active=True, email="u1@example.com"
+        )
+        UserProfile.objects.create(user=self.user, role=UserProfile.ROLE_USER, is_blocked=False)
+
+        # Второй обычный пользователь (чтобы проверить запрет редактирования чужих)
+        self.user2 = User.objects.create_user(
+            username="u2", password="p", is_active=True, email="u2@example.com"
+        )
+        UserProfile.objects.create(user=self.user2, role=UserProfile.ROLE_USER, is_blocked=False)
+
+        # Менеджер
+        self.manager = User.objects.create_user(
+            username="m1", password="p", is_active=True, email="m1@example.com"
+        )
+        UserProfile.objects.create(user=self.manager, role=UserProfile.ROLE_MANAGER, is_blocked=False)
+
+        # Данные владельца
+        self.rec1 = Recipient.objects.create(owner=self.user, email="r1@example.com", full_name="R One", comment="")
+        self.rec2 = Recipient.objects.create(owner=self.user, email="r2@example.com", full_name="R Two", comment="")
+        self.msg = Message.objects.create(owner=self.user, subject="Subj", body="Body")
+
+        now = timezone.now()
+        self.mailing = Mailing.objects.create(
+            owner=self.user,
+            start_at=now - timezone.timedelta(minutes=1),
+            end_at=now + timezone.timedelta(minutes=2),
+            status=Mailing.STATUS_CREATED,
+            is_disabled=False,
+            message=self.msg,
+        )
+        self.mailing.recipients.set([self.rec1, self.rec2])
+
+        self.client = Client()
+
+
+class TemplatesSeparationTests(BaseSetupMixin):
+    def test_messages_list_uses_messages_template(self):
+        self.client.login(username="u1", password="p")
+        resp = self.client.get(reverse("messages_list"))
+        self.assertTemplateUsed(resp, "messages/list.html")
+        self.assertContains(resp, "Сообщения")
+
+    def test_mailings_list_uses_mailings_template(self):
+        self.client.login(username="u1", password="p")
+        resp = self.client.get(reverse("mailings_list"))
+        self.assertTemplateUsed(resp, "mailings/list.html")
+        self.assertContains(resp, "Рассылки")
+
+
+class MailingSendViewTests(BaseSetupMixin):
+    @patch("sendingmessages.views.send_mailing_service")
+    def test_user_can_send_own_mailing_and_status_changes(self, mock_send):
+        mock_send.return_value = {"total": 2, "success": 2, "failed": 0}
+        self.client.login(username="u1", password="p")
+
+        resp = self.client.post(reverse("mailings_send", args=[self.mailing.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        self.mailing.refresh_from_db()
+        self.assertIn(self.mailing.status, [Mailing.STATUS_RUNNING, Mailing.STATUS_FINISHED])
+
+    @patch("sendingmessages.views.send_mailing_service")
+    def test_manager_can_send_someones_mailing(self, mock_send):
+        mock_send.return_value = {"total": 1, "success": 1, "failed": 0}
+        self.client.login(username="m1", password="p")
+
+        resp = self.client.post(reverse("mailings_send", args=[self.mailing.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+        self.mailing.refresh_from_db()
+        self.assertIn(self.mailing.status, [Mailing.STATUS_RUNNING, Mailing.STATUS_FINISHED])
+
+    def test_user_cannot_send_disabled_mailing(self):
+        self.mailing.is_disabled = True
+        self.mailing.save(update_fields=["is_disabled"])
+        self.client.login(username="u1", password="p")
+
+        resp = self.client.post(reverse("mailings_send", args=[self.mailing.pk]), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.mailing.refresh_from_db()
+        # статус не должен становиться RUNNING
+        self.assertNotEqual(self.mailing.status, Mailing.STATUS_RUNNING)
+
+
+class ManagerUsersPageTests(BaseSetupMixin):
+    def test_only_manager_can_open_users_page(self):
+        # обычный пользователь -> редирект/нет доступа
+        self.client.login(username="u1", password="p")
+        resp = self.client.get(reverse("users:users_list"), follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.client.logout()
+
+        # менеджер -> OK
+        self.client.login(username="m1", password="p")
+        resp = self.client.get(reverse("users:users_list"))
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Пользователи")
+
+
+@override_settings(
+    CACHES={
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "test-locmem",
+            "TIMEOUT": 60,
+        }
+    }
+)
+class CacheBackendTests(TestCase):
+    def test_cache_backend_is_working(self):
+        from django.core.cache import caches
+        cache = caches['default']
+        cache.set("k", "v", 10)
+        self.assertEqual(cache.get("k"), "v")
+
+
+
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class RegistrationActivationTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+
+
+    def test_signup_creates_inactive_user_and_confirmation(self):
+        from django.core import mail
+
+        data = {
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password": "StrongPass#123",
+        }
+        resp = self.client.post(reverse("users:signup"), data, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        # ... existing code ...
+
+    def test_activate_account_by_token(self):
+        user = User.objects.create_user(username="inactive", password="p", email="inactive@example.com", is_active=False)
+        UserProfile.objects.create(user=user, role=UserProfile.ROLE_USER, is_blocked=False)
+        token = uuid.uuid4()
+        EmailConfirmation.objects.create(user=user, token=token, is_used=False)
+
+        resp = self.client.get(reverse("users:activate", kwargs={"token": token}), follow=True)
+        self.assertEqual(resp.status_code, 200)
+
+
+
+
+

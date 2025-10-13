@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4" style="max-width:540px;">
+  <h1 class="mb-3">Вы вышли из аккаунта</h1>
+  <a class="btn btn-primary" href="{% url 'users:login' %}">Войти снова</a>
+  <a class="btn btn-secondary ms-2" href="{% url 'home' %}">На главную</a>
+</div>
+{% endblock %}

@@ -1,0 +1,39 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+  <div class="container-fluid">
+    <a class="navbar-brand" href="{% url 'home' %}">SendingMessages</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar" aria-controls="topNavbar" aria-expanded="false" aria-label="Переключить навигацию">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="topNavbar">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item"><a class="nav-link" href="{% url 'recipients_list' %}">Клиенты</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'messages_list' %}">Сообщения</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'mailings_list' %}">Рассылки</a></li>
+        <li class="nav-item"><a class="nav-link" href="{% url 'stats' %}">Статистика</a></li>
+        {% if user.is_authenticated and user.profile and user.profile.role == 'manager' %}
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:users_list' %}">Пользователи</a></li>
+          <li class="nav-item"><a class="nav-link" href="{% url 'users:manager_dashboard' %}">Дашборд</a></li>
+        {% endif %}
+      </ul>
+
+      <ul class="navbar-nav ms-auto">
+        {% if user.is_authenticated %}
+          <li class="nav-item">
+            <span class="navbar-text me-2">Привет, {{ user.username }}!</span>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-outline-light btn-sm" href="{% url 'users:logout' %}">Выйти</a>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a class="btn btn-outline-light btn-sm" href="{% url 'users:login' %}">Войти</a>
+          </li>
+          <li class="nav-item ms-2">
+            <a class="btn btn-warning btn-sm" href="{% url 'users:signup' %}">Регистрация</a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>

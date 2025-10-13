@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Сообщения{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="m-0">Сообщения</h1>
+    <a href="{% url 'messages_create' %}" class="btn btn-success">Новое сообщение</a>
+  </div>
+
+  {% if message_list %}
+    <div class="table-responsive">
+      <table class="table table-striped align-middle">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Тема</th>
+            <th class="text-end">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for obj in message_list %}
+            <tr>
+              <td>{{ obj.id }}</td>
+              <td><a href="{% url 'messages_detail' pk=obj.pk %}">{{ obj.subject }}</a></td>
+              <td class="text-end">
+                <a href="{% url 'messages_detail' pk=obj.pk %}" class="btn btn-outline-secondary btn-sm">Открыть</a>
+                <a href="{% url 'messages_edit' pk=obj.pk %}" class="btn btn-outline-primary btn-sm">Изм.</a>
+                <form action="{% url 'messages_delete' pk=obj.pk %}" method="post" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Удалить сообщение?')">Удалить</button>
+                </form>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% include "includes/pagination.html" %}
+  {% else %}
+    <p>Нет сообщений.</p>
+  {% endif %}
+{% endblock %}
+
