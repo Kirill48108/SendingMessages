@@ -21,7 +21,7 @@ def send_activation_email(request, user: User) -> bool:
     """
     try:
         confirm = EmailConfirmation.objects.create(user=user)
-        activate_url = request.build_absolute_uri(reverse("activate", args=[str(confirm.token)]))
+        activate_url = request.build_absolute_uri(reverse("users:activate", args=[str(confirm.token)]))
         subject = "Подтверждение регистрации"
         body = f"Здравствуйте, {user.username}!\nЧтобы активировать аккаунт, перейдите по ссылке: {activate_url}"
         send_mail(subject=subject, message=body, from_email=_get_from_email(), recipient_list=[user.email])

@@ -33,8 +33,7 @@ class LogoutView(DjangoLogoutView):
 # Менеджер: список пользователей
 User = get_user_model()  # используем актуальную модель пользователя
 
-
-class UsersListView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixin, TemplateView):
+class UsersListView(LoginRequiredMixin, ManagerRequiredMixin, BlockedCheckMixin, TemplateView):
     template_name = "users/list.html"
 
     def get_context_data(self, **kwargs):
@@ -44,12 +43,24 @@ class UsersListView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixin,
         ctx["ROLE_USER"] = UserProfile.ROLE_USER
         ctx["ROLE_MANAGER"] = UserProfile.ROLE_MANAGER
         return ctx
+# ... existing code ...
+
+
+class ManagerRequiredMixin(UserPassesTestMixin):
+    def test_func(self):
+        user = self.request.user
+        role = getattr(getattr(user, "profile", None), "role", UserProfile.ROLE_USER)
+        return user.is_authenticated and role == UserProfile.ROLE_MANAGER
+
+    def handle_no_permission(self):
+        messages.error(self.request, "Доступ разрешён только менеджерам.")
+        return HttpResponseRedirect(reverse("home"))
 
 
 
 class SignUpView(FormView):
     template_name = "auth/signup.html"
-    success_url = reverse_lazy("activation_sent")
+    success_url = reverse_lazy("users:activation_sent")
 
     def get_form(self, form_class=None):
         from django import forms
@@ -97,7 +108,7 @@ class UserBlockToggleView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequired
         profile.save(update_fields=["is_blocked"])
         state = "заблокирован" if profile.is_blocked else "разблокирован"
         messages.success(request, f"Пользователь {target.username} {state}.")
-        return HttpResponseRedirect(reverse("users_list"))
+        return HttpResponseRedirect(reverse("users:users_list"))
 
     def get(self, request, pk: int):
         return HttpResponseNotAllowed(permitted_methods=["POST"])
@@ -108,7 +119,7 @@ class UserSetRoleView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixi
         new_role = request.POST.get("role")
         if new_role not in (UserProfile.ROLE_USER, UserProfile.ROLE_MANAGER):
             messages.error(request, "Некорректная роль.")
-            return HttpResponseRedirect(reverse("users_list"))
+            return HttpResponseRedirect(reverse("users:users_list"))
 
         profile = getattr(target, "profile", None) or UserProfile.objects.create(
             user=target, role=UserProfile.ROLE_USER, is_blocked=False
@@ -117,7 +128,7 @@ class UserSetRoleView(LoginRequiredMixin, BlockedCheckMixin, ManagerRequiredMixi
         profile.save(update_fields=["role"])
         role_human = "Менеджер" if new_role == UserProfile.ROLE_MANAGER else "Пользователь"
         messages.success(request, f"Роль пользователя {target.username} изменена на «{role_human}».")
-        return HttpResponseRedirect(reverse("users_list"))
+        return HttpResponseRedirect(reverse("users:users_list"))
 
     def get(self, request, pk: int):
         return HttpResponseNotAllowed(permitted_methods=["POST"])
@@ -139,15 +150,6 @@ class ActivateAccountView(View):
 
 
 
-class ManagerRequiredMixin(UserPassesTestMixin):
-    def test_func(self):
-        user = self.request.user
-        role = getattr(getattr(user, "profile", None), "role", UserProfile.ROLE_USER)
-        return user.is_authenticated and role == UserProfile.ROLE_MANAGER
-
-    def handle_no_permission(self):
-        messages.error(self.request, "Доступ разрешён только менеджерам.")
-        return HttpResponseRedirect(reverse("home"))
 
 
 

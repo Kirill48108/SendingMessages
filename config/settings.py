@@ -165,25 +165,25 @@ def env_int(name: str, default: int | None = None) -> int | None:
         return default
 
 # Email
-EMAIL_BACKEND = os.getenv(
-    "EMAIL_BACKEND",
-    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
-)
-_IS_SMTP_BACKEND = EMAIL_BACKEND.endswith("smtp.EmailBackend")
+#EMAIL_BACKEND = os.getenv(
+    #"EMAIL_BACKEND",
+    #"django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+#)
+#_IS_SMTP_BACKEND = EMAIL_BACKEND.endswith("smtp.EmailBackend")
 
-EMAIL_HOST = os.getenv("EMAIL_HOST", "")
-EMAIL_PORT = env_int("EMAIL_PORT", 587 if _IS_SMTP_BACKEND else 0)
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+#EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+#EMAIL_PORT = env_int("EMAIL_PORT", 587 if _IS_SMTP_BACKEND else 0)
+#EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+#EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
 
-EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True) if _IS_SMTP_BACKEND else False
-EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False) if _IS_SMTP_BACKEND else False
+#EMAIL_USE_TLS = env_bool("EMAIL_USE_TLS", True) if _IS_SMTP_BACKEND else False
+#EMAIL_USE_SSL = env_bool("EMAIL_USE_SSL", False) if _IS_SMTP_BACKEND else False
 # Исключаем одновременное True: при SSL отключаем TLS
-if EMAIL_USE_SSL:
-    EMAIL_USE_TLS = False
+#if EMAIL_USE_SSL:
+    #EMAIL_USE_TLS = False
 
-DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "webmaster@localhost")
-EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 20)
+#DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER or "webmaster@localhost")
+#EMAIL_TIMEOUT = env_int("EMAIL_TIMEOUT", 20)
 
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -196,6 +196,9 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_URL = "users:login"
 LOGIN_REDIRECT_URL = "home"
 LOGOUT_REDIRECT_URL = "home"
+
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 
 
