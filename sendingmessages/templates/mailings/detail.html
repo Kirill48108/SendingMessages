@@ -66,11 +66,10 @@
       </form>
     {% endif %}
 
-    {# Если у вас есть ручной запуск рассылки через POST вьюху, раскомментируйте и подставьте правильный URL name #}
-    {# <form method="post" action="{% url 'mailings_send' mailing.pk %}">
+     <form method="post" action="{% url 'mailings_send' mailing.pk %}">
       {% csrf_token %}
       <button class="btn btn-primary">Отправить сейчас</button>
-    </form> #}
+    </form>
   </div>
 </div>
 {% endblock %}
